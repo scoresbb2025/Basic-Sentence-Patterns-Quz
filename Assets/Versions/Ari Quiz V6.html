@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Ari Quiz — Juego</title>
+<style>
+  :root{
+    --menu-blue: #4472C4;
+    --game-bg: #071a2b;
+    --accent: #00c97a;
+    --danger: #ff4d4f;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%;margin:0;font-family:Inter, system-ui, -apple-system, Roboto, Arial;background:var(--menu-blue); color:#fff}
+
+  /* Screens */
+  #menu, #game, #formulasOverlay, #gameOverStage1, #gameOverStage2 { width:100%; height:100vh; }
+  #game, #formulasOverlay, #gameOverStage1, #gameOverStage2 { display:none; }
+
+  /* MENU */
+  #menu{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:36px;
+    gap:18px;
+  }
+  #menuLeft{display:flex;flex-direction:column;gap:20px}
+  #logo{width:460px}
+  .menu-btn{background:none;border:0;padding:0;cursor:pointer}
+  .menu-btn img{width:320px;display:block}
+  #summaryBtn{width:280px;cursor:pointer}
+  #menuRight img{width:620px;max-width:40vw;height:auto}
+
+  /* FORMULAS overlay */
+  #formulasOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.85);z-index:120}
+  #formulasOverlay img{max-width:92%;height:auto;box-shadow:0 10px 40px rgba(0,0,0,0.6)}
+
+  /* GAME */
+  #game{background:var(--game-bg);color:#fff;padding:20px;overflow:auto}
+  .question-card{
+    max-width:1100px;
+    margin:20px auto;
+    border-radius:12px;
+    background:#fff;
+    color:#000;
+    padding:48px 18px; /* más espacio vertical */
+    min-height:150px; /* altura mayor para preguntas largas */
+  }
+  .question-text{font-size:20px;text-align:center}
+  .layout{max-width:1100px;margin:0 auto;display:grid;grid-template-columns:320px 1fr;gap:18px;align-items:start}
+
+  /* Ari area responsiva */
+  .ari-wrap{
+    position:relative;
+    width:100%;
+    max-width:320px;
+    height:auto;
+    margin:0 auto;
+  }
+  #ari{
+    width:100%;
+    height:auto;
+    display:block;
+  }
+  #ariHud{
+    position:absolute;
+    bottom:10%;
+    left:50%;
+    transform:translateX(-50%);
+    width:90%;
+    background:rgba(0,0,0,0.6);
+    padding:12px;
+    border-radius:8px;
+    color:#fff;
+    z-index:2;
+    text-align:center;
+    font-size:clamp(14px,1.2vw,18px);
+  }
+
+  /* Options en columna */
+  .options-grid{
+    display:flex;
+    flex-direction:column;
+    gap:14px;
+  }
+  .opt{
+    background:var(--accent);
+    color:#002518;
+    padding:16px;
+    border-radius:10px;
+    border:0;
+    font-weight:800;
+    cursor:pointer;
+    box-shadow:0 6px 18px rgba(0,0,0,0.5);
+    text-align:center;
+  }
+  .opt.disabled{opacity:0.45;pointer-events:none}
+
+  /* Result overlay (cover) for falling circle/X */
+  #resultOverlay{position:fixed;inset:0;display:none;align-items:center;justify-content:center;z-index:100}
+  #resultOverlay img{width:24%;animation:drop 0.9s cubic-bezier(.2,.9,.3,1) forwards}
+  @keyframes drop{0%{transform:translateY(-350px) scale(0.6);opacity:0}70%{transform:translateY(20px) scale(1.05);opacity:1}100%{transform:translateY(0) scale(1);opacity:1}}
+
+  /* JustOne modal */
+  #justOneModal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#000;z-index:130}
+  #justOneModal img{width:48%}
+
+  /* Dialog box */
+  #dialogBox{display:none;background:rgba(0,0,0,0.6);padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);max-width:520px;color:#fff}
+  #dialogBox button{margin-top:8px;padding:10px 14px;border-radius:8px;background:#004aad;border:0;color:#fff;font-weight:800;cursor:pointer}
+
+  /* GAMEOVER stage1 (black + falling title) */
+  #gameOverStage1{position:fixed;left:0;top:0;right:0;bottom:0;background:#000;display:none;align-items:flex-start;justify-content:center;z-index:200;overflow:hidden}
+  #gameOverStage1 img{position:relative;left:50%;transform:translateX(-50%);width:60%;max-width:720px;animation:gameOverTitleDrop 1s ease forwards}
+  @keyframes gameOverTitleDrop{0%{transform:translate(-50%,-300px) scale(0.6);opacity:0}60%{transform:translate(-50%,20px) scale(1.03);opacity:1}100%{transform:translate(-50%,0) scale(1);opacity:1}}
+
+  /* GAMEOVER stage2 (final) */
+  #gameOverStage2{position:fixed;left:0;top:0;right:0;bottom:0;display:none;z-index:210;align-items:center;justify-content:center;background:#000}
+  #gameOverStage2 .bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:1}
+  #gameOverStage2 .content{position:relative;z-index:2;display:flex;align-items:center;justify-content:center;width:100%;height:100%}
+  #gameOverStage2 .rightCol{position: absolute; right:6%; top:50%; transform:translateY(-50%); display:flex;flex-direction:column;align-items:center;gap:12px}
+  #gameOverStage2 .scoreText{
+    font-size:100px; /* número más grande */
+    color:#fff;font-weight:800;text-align:center
+  }
+  #gameOverStage2 .emailImg{
+    width:500px; /* email más grande */
+    margin-top:6px
+  }
+
+  @media(max-width:960px){
+    #menu{flex-direction:column;align-items:flex-start}
+    #menuRight img{width:320px}
+    .layout{grid-template-columns:1fr}
+    .ari-wrap{max-width:260px}
+    #ariHud{bottom:5%;width:95%;font-size:14px}
+    #gameOverStage2 .rightCol{position:static;transform:none;margin-top:40px}
+    #gameOverStage2 .scoreText{font-size:80px}
+    #gameOverStage2 .emailImg{width:350px}
+  }
+</style>
+</head>
+<body>
+<!-- MENU -->
+<div id="menu" aria-hidden="false">
+  <div id="menuLeft">
+    <img id="logo" src="Assets/Images/Logo.png" alt="Logo">
+    <button class="menu-btn" id="playBtn" aria-label="Play">
+      <img src="Assets/Images/Buttons/PLAY NOW.png" alt="Play Now">
+    </button>
+    <img id="summaryBtn" src="Assets/Images/Buttons/Summary.png" alt="Summary" style="width:260px;cursor:pointer">
+  </div>
+  <div id="menuRight">
+    <img src="Assets/Images/Ari_Static_2.png" alt="Ari Menu">
+  </div>
+</div>
+
+<!-- FORMULAS overlay -->
+<div id="formulasOverlay" onclick="this.style.display='none'">
+  <img src="Assets/Images/Formulas.png" alt="Formulas">
+</div>
+
+<!-- GAME -->
+<div id="game" aria-hidden="true">
+  <div class="question-card">
+    <div id="questionText" class="question-text">Aquí aparecerá la pregunta</div>
+  </div>
+  <div class="layout">
+    <div class="ari-wrap">
+      <img id="ari" src="Assets/Images/Ari_Static_0.png" alt="Ari">
+      <div id="ariHud">
+        <div class="stat">LIVES: <span id="livesSpan">❤❤❤❤❤</span></div>
+        <div class="stat" style="margin-top:8px"><span id="scoreSpan">0</span></div>
+      </div>
+    </div>
+    <div>
+      <div id="optionsGrid" class="options-grid"></div>
+      <div id="dialogWrap" style="margin-top:16px;display:flex;justify-content:flex-start;align-items:flex-start;gap:12px">
+        <div id="dialogBox"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- RESULT / JUSTONE / GAMEOVER overlays -->
+<div id="resultOverlay" aria-hidden="true"></div>
+<div id="justOneModal" aria-hidden="true"><img src="Assets/Images/JustOneMore.gif" alt="Just One More"></div>
+<div id="gameOverStage1" aria-hidden="true"><img id="gameOverTitleImg" src="Assets/Images/GameOverTittle.png" alt="Game Over Title"></div>
+<div id="gameOverStage2" aria-hidden="true">
+  <div class="bg" id="gameOverBg"></div>
+  <div class="content">
+    <div class="rightCol">
+      <img src="Assets/Images/Score.gif" alt="Score GIF">
+      <div class="scoreText" id="finalScoreText">0</div>
+      <img src="Assets/Images/Email.png" class="emailImg" alt="Email">
+    </div>
+  </div>
+</div>
+
+<!-- audio elements -->
+<audio id="bgAudio" loop></audio>
+<audio id="sfxCorrect"></audio>
+<audio id="sfxIncorrect"></audio>
+<audio id="sfxJustOne"></audio>
+<audio id="gameOverMusic"></audio>
+
+<script>
+// --- Assets config ---
+const MUSIC = {
+  menu: 'Assets/Music/Skullgirls OST #03 - Pedestrians Crossing.mp3',
+  q1_10: 'Assets/Music/Courtroom Lobby Beginning Overture.mp3',
+  correct1_10: 'Assets/Music/Phoenix Wright Ace Attorney OST - Logic and Trick.mp3',
+  wrong1_10: "Assets/Music/Phoenix Wright Ace Attorney OST - Detention Center Jailers' Elegy.mp3",
+  gameOver: "Assets/Music/Phoenix Wright Ace Attorney OST - Recollection  The DL-6 Incident.mp3"
+};
+const SFX = {
+  correct: 'Assets/Sound Effects/Correct.mp3',
+  incorrect: 'Assets/Sound Effects/Incorrect.mp3',
+  justOne: 'Assets/Sound Effects/A NEW CHALLENGER HAS APPEARED!.mp3'
+};
+
+// --- Placeholders
+const QUESTIONS = [], ARI_CORRECT = [], ARI_INCORRECT = [];
+for(let i=1;i<=50;i++){
+  QUESTIONS.push({q:`Preg ${i}`,a:["ResCorr","ResInc","ResInc","ResInc"],correct:0});
+  ARI_CORRECT.push(`Ari's Text Corr ${i}`);
+  ARI_INCORRECT.push(`Ari's Text Inc ${i}`);
+}
+
+// --- State
+let current=0,lives=5,score=0,justOneShown=false,answered=false;
+
+// --- DOM refs
+const menu=document.getElementById('menu');
+const playBtn=document.getElementById('playBtn');
+const summaryBtn=document.getElementById('summaryBtn');
+const formulasOverlay=document.getElementById('formulasOverlay');
+const game=document.getElementById('game');
+const questionText=document.getElementById('questionText');
+const optionsGrid=document.getElementById('optionsGrid');
+const ari=document.getElementById('ari');
+const ariHudLives=document.getElementById('livesSpan');
+const ariHudScore=document.getElementById('scoreSpan');
+const dialogBox=document.getElementById('dialogBox');
+const resultOverlay=document.getElementById('resultOverlay');
+const justOneModal=document.getElementById('justOneModal');
+const gameOverStage1=document.getElementById('gameOverStage1');
+const gameOverStage2=document.getElementById('gameOverStage2');
+const gameOverBg=document.getElementById('gameOverBg');
+const finalScoreText=document.getElementById('finalScoreText');
+const gameOverMusic=document.getElementById('gameOverMusic');
+
+const bgAudio=document.getElementById('bgAudio');
+const sfxCorrect=document.getElementById('sfxCorrect');
+const sfxIncorrect=document.getElementById('sfxIncorrect');
+const sfxJustOne=document.getElementById('sfxJustOne');
+
+// --- Audio helpers ---
+function setBg(path){ if(!path) return; try{ bgAudio.pause(); bgAudio.src=path; bgAudio.currentTime=0; bgAudio.play().catch(()=>{}); }catch(e){} }
+function stopBg(){ try{ bgAudio.pause(); bgAudio.src=''; }catch(e){} }
+function playSfx(name){ try{ if(name==='correct'){sfxCorrect.src=SFX.correct;sfxCorrect.currentTime=0;sfxCorrect.play().catch(()=>{});} if(name==='incorrect'){sfxIncorrect.src=SFX.incorrect;sfxIncorrect.currentTime=0;sfxIncorrect.play().catch(()=>{});} if(name==='justone'){sfxJustOne.src=SFX.justOne;sfxJustOne.currentTime=0;sfxJustOne.play().catch(()=>{});} }catch(e){} }
+
+// --- UI actions ---
+playBtn.addEventListener('click', ()=>{ menu.style.display='none'; game.style.display='block'; startGame(); });
+summaryBtn.addEventListener('click', ()=>{ formulasOverlay.style.display='flex'; });
+
+// --- HUD ---
+function renderHUD(){ ariHudLives.textContent='❤'.repeat(lives)+'💔'.repeat(5-lives); ariHudScore.textContent=score; }
+
+// --- Game flow ---
+function startGame(){ current=0;lives=5;score=0;justOneShown=false;answered=false; renderHUD(); loadQuestion(); }
+function loadQuestion(){
+  answered=false; dialogBox.style.display='none'; resultOverlay.style.display='none'; ari.src='Assets/Images/Ari_Questioning.png';
+  const q=QUESTIONS[current]; questionText.textContent=q?q.q:'---'; optionsGrid.innerHTML='';
+  if(!q) return;
+  q.a.forEach((opt,idx)=>{
+    const b=document.createElement('button'); b.className='opt'; b.textContent=opt; b.dataset.index=idx; b.addEventListener('click',()=>onOptionClick(idx,b)); optionsGrid.appendChild(b);
+  });
+  renderHUD();
+}
+function onOptionClick(idx,btn){
+  if(answered) return; answered=true;
+  Array.from(optionsGrid.children).forEach(c=>c.classList.add('disabled'));
+  const q=QUESTIONS[current],correct=(idx===q.correct);
+  resultOverlay.style.display='flex'; resultOverlay.style.background=correct?'rgba(0,255,0,0.35)':'rgba(255,0,0,0.35)';
+  resultOverlay.innerHTML=`<img src="Assets/Images/${correct?'correct_circle.png':'incorrect_x.png'}" alt="result">`;
+  if(correct){ playSfx('correct'); score++; } else { playSfx('incorrect'); lives=Math.max(0,lives-1); }
+  if(lives===1 && !justOneShown){ justOneShown=true; playSfx('justone'); justOneModal.style.display='flex'; setTimeout(()=>{ justOneModal.style.display='none'; },2200); }
+  setTimeout(()=>{
+    resultOverlay.style.display='none';
+    if(correct){ ari.src='Assets/Images/Ari_Show_1.png'; dialogBox.textContent=ARI_CORRECT[current]||'Buen trabajo.'; }
+    else{ ari.src='Assets/Images/Ari_CrossedHands_1.png'; dialogBox.textContent=ARI_INCORRECT[current]||'Ja.'; }
+    dialogBox.style.display='block';
+    const old=document.getElementById('nextBtn'); if(old) old.remove();
+    const nextBtn=document.createElement('button'); nextBtn.id='nextBtn'; nextBtn.textContent='» Next Question';
+    nextBtn.addEventListener('click',()=>{
+      if(lives<=0){ triggerGameOver(); return; }
+      current++; if(current>=QUESTIONS.length){ triggerGameOver(); return; }
+      loadQuestion();
+    });
+    dialogBox.appendChild(nextBtn);
+    renderHUD();
+  },1200);
+}
+
+// --- Game Over ---
+function triggerGameOver(){
+  stopBg();
+  game.style.display='none';
+  gameOverStage1.style.display='flex';
+  const onStage1Click=()=>{
+    gameOverStage1.style.display='none';
+    showGameOverStage2();
+    gameOverStage1.removeEventListener('click',onStage1Click);
+  };
+  gameOverStage1.addEventListener('click',onStage1Click);
+}
+function showGameOverStage2(){
+  const bgPath='Assets/Images/GameOver.png';
+  gameOverBg.style.backgroundImage=`url('${bgPath}')`; gameOverBg.style.backgroundSize='cover'; gameOverBg.style.backgroundPosition='center';
+  finalScoreText.textContent=score; gameOverStage2.style.display='flex';
+  try{ gameOverMusic.src=MUSIC.gameOver; gameOverMusic.play().catch(()=>{});}catch(e){}
+}
+
+// --- Start menu music ---
+window.addEventListener('load',()=>{ try{ bgAudio.src=MUSIC.menu; bgAudio.play().catch(()=>{});}catch(e){} });
+</script>
+</body>
+</html>

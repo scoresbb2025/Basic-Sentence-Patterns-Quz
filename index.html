@@ -475,8 +475,30 @@ function showGameOverStage2() {
   } catch (e) {}
 }
 
+  // --- BOTON TEMPORAL para saltar a la pregunta 48 ---
+const skipBtn = document.createElement('button');
+skipBtn.textContent = 'Saltar a Pregunta 48';
+skipBtn.style.position = 'fixed';
+skipBtn.style.bottom = '20px';
+skipBtn.style.right = '20px';
+skipBtn.style.padding = '12px 20px';
+skipBtn.style.background = 'orange';
+skipBtn.style.color = '#000';
+skipBtn.style.fontWeight = '800';
+skipBtn.style.border = 'none';
+skipBtn.style.borderRadius = '8px';
+skipBtn.style.cursor = 'pointer';
+skipBtn.style.zIndex = '999';
+document.body.appendChild(skipBtn);
+
+skipBtn.addEventListener('click', () => {
+  current = 47; // índice de la pregunta 48
+  loadQuestion();
+});
+
 // --- Start menu music ---
 window.addEventListener('load',()=>{ try{ bgAudio.src=MUSIC.menu; bgAudio.play().catch(()=>{});}catch(e){} });
 </script>
 </body>
 </html>
+
